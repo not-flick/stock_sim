@@ -1,0 +1,11 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/viraj/stock_sim/build/cmake_install.cmake",
+		"C:/Users/viraj/stock_sim/build/matplotplusplus/cmake_install.cmake",
+		"C:/Users/viraj/stock_sim/build/matplotplusplus/source/cmake_install.cmake",
+		"C:/Users/viraj/stock_sim/build/matplotplusplus/source/3rd_party/cmake_install.cmake",
+		"C:/Users/viraj/stock_sim/build/matplotplusplus/source/matplot/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
