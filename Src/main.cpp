@@ -8,12 +8,8 @@
 
 std::mt19937 rng(std::random_device{}());
 
-std::normal_distribution<float> money_dist(
-    10000.f,
-    2500.f
-);
-
-class Trader {
+class Trader
+{
 public:
     float money;
     float impulsiveness;
@@ -21,18 +17,26 @@ public:
 
     Trader()
     {
-        money = money_dist(rng);
+        money =
+            std::normal_distribution<float>(
+                10000.f,
+                2500.f
+            )(rng);
 
         impulsiveness =
             std::uniform_real_distribution<float>(
-                -0.1f,
-                 0.1f
+                -0.10f,
+                 0.10f
             )(rng);
 
         bid = 0.f;
     }
 
-    void UpdateBid(float current_price)
+    void UpdateBid(
+        float current_price,
+        float trend,
+        float news
+    )
     {
         float mood =
             std::uniform_real_distribution<float>(
@@ -40,12 +44,37 @@ public:
                  0.05f
             )(rng);
 
-        bid = current_price *
-              (1.f + impulsiveness + mood);
+        float momentum = trend * 3.f;
+
+        float panic = 0.f;
+
+        if (trend < -0.03f)
+        {
+            panic =
+                std::uniform_real_distribution<float>(
+                    -0.15f,
+                    -0.05f
+                )(rng);
+        }
+
+        bid =
+            current_price *
+            (
+                1.f +
+                impulsiveness +
+                mood +
+                momentum +
+                panic +
+                news
+            );
+
+        if (bid < 1.f)
+            bid = 1.f;
     }
 };
 
-class Nvidia {
+class Nvidia
+{
 public:
     float init_price = 100.f;
 
@@ -57,11 +86,14 @@ public:
         if (bid_prices.empty())
             return init_price;
 
-        return std::accumulate(
-            bid_prices.begin(),
-            bid_prices.end(),
-            0.f
-        ) / bid_prices.size();
+        return
+            std::accumulate(
+                bid_prices.begin(),
+                bid_prices.end(),
+                0.f
+            )
+            /
+            bid_prices.size();
     }
 };
 
@@ -76,18 +108,28 @@ int main()
 
     Nvidia nvidia;
 
-    FILE* gp = popen("gnuplot -persistent", "w");
+    FILE* gp =
+        popen(
+            "gnuplot -persistent",
+            "w"
+        );
 
     if (!gp)
     {
-        std::cerr << "Failed to start gnuplot\n";
+        std::cerr
+            << "Failed to launch gnuplot\n";
         return 1;
     }
 
-    fprintf(gp, "set title 'NVIDIA Stock Price'\n");
+    fprintf(gp, "set title 'NVDA Market Simulation'\n");
     fprintf(gp, "set xlabel 'Time'\n");
     fprintf(gp, "set ylabel 'Price'\n");
     fprintf(gp, "set grid\n");
+
+    float previous_price =
+        nvidia.init_price;
+
+    float news = 0.f;
 
     int frame = 0;
 
@@ -95,29 +137,73 @@ int main()
     {
         nvidia.bid_prices.clear();
 
-        float current_price = nvidia.GetPrice();
+        float current_price =
+            nvidia.GetPrice();
+
+        float trend =
+            (current_price - previous_price)
+            /
+            previous_price;
+
+        previous_price =
+            current_price;
+
+        if (frame % 100 == 0)
+        {
+            news =
+                std::uniform_real_distribution<float>(
+                    -0.10f,
+                     0.10f
+                )(rng);
+
+            std::cout
+                << "\nNEWS EVENT: "
+                << news * 100.f
+                << "% sentiment\n";
+        }
 
         for (Trader& trader : market)
         {
-            trader.UpdateBid(current_price);
-            nvidia.bid_prices.push_back(trader.bid);
+            trader.UpdateBid(
+                current_price,
+                trend,
+                news
+            );
+
+            nvidia.bid_prices.push_back(
+                trader.bid
+            );
         }
 
-        float new_price = nvidia.GetPrice();
+        float new_price =
+            nvidia.GetPrice();
 
-        nvidia.history.push_back(new_price);
+        nvidia.history.push_back(
+            new_price
+        );
 
-        if (nvidia.history.size() > 500)
+        if (
+            nvidia.history.size()
+            > 500
+        )
         {
-            nvidia.history.erase(nvidia.history.begin());
+            nvidia.history.erase(
+                nvidia.history.begin()
+            );
         }
 
         if (frame % 10 == 0)
         {
-            fprintf(gp,
-                "plot '-' with lines lw 2 title 'NVDA'\n");
+            fprintf(
+                gp,
+                "plot '-' with lines lw 2 title 'NVDA'\n"
+            );
 
-            for (size_t i = 0; i < nvidia.history.size(); i++)
+            for (
+                size_t i = 0;
+                i < nvidia.history.size();
+                i++
+            )
             {
                 fprintf(
                     gp,
@@ -140,7 +226,9 @@ int main()
         frame++;
 
         std::this_thread::sleep_for(
-            std::chrono::milliseconds(50)
+            std::chrono::milliseconds(
+                50
+            )
         );
     }
 
