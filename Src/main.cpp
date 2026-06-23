@@ -5,8 +5,14 @@
 #include <thread>
 #include <chrono>
 #include <cstdio>
+#include <algorithm>
 
 std::mt19937 rng(std::random_device{}());
+
+std::normal_distribution<float> news_change(
+    0.0f,
+    0.0015f
+);
 
 class Trader
 {
@@ -148,19 +154,32 @@ int main()
         previous_price =
             current_price;
 
-        if (frame % 100 == 0)
+        // Continuous sentiment drift
+        news += news_change(rng);
+
+        // Rare major events
+        if (frame % 500 == 0)
         {
-            news =
-                std::uniform_real_distribution<float>(
-                    -0.10f,
-                     0.10f
+            float shock =
+                std::normal_distribution<float>(
+                    0.0f,
+                    0.03f
                 )(rng);
 
+            news += shock;
+
             std::cout
-                << "\nNEWS EVENT: "
-                << news * 100.f
-                << "% sentiment\n";
+                << "\nMAJOR NEWS EVENT: "
+                << shock * 100.f
+                << "% impact\n";
         }
+
+        // Prevent runaway insanity
+        news = std::clamp(
+            news,
+            -0.15f,
+             0.15f
+        );
 
         for (Trader& trader : market)
         {
@@ -219,6 +238,8 @@ int main()
             std::cout
                 << "\rPrice: "
                 << new_price
+                << "  Sentiment: "
+                << news
                 << "      "
                 << std::flush;
         }
