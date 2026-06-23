@@ -1,16 +1,10 @@
 #include <iostream>
-#include <matplot/matplot.h>
 #include <random>
 #include <vector>
 #include <numeric>
 #include <thread>
 #include <chrono>
-
-
-//debug
-
-
-using namespace matplot;
+#include <cstdio>
 
 std::mt19937 rng(std::random_device{}());
 
@@ -82,7 +76,20 @@ int main()
 
     Nvidia nvidia;
 
-    auto fig = figure(true);
+    FILE* gp = popen("gnuplot -persistent", "w");
+
+    if (!gp)
+    {
+        std::cerr << "Failed to start gnuplot\n";
+        return 1;
+    }
+
+    fprintf(gp, "set title 'NVIDIA Stock Price'\n");
+    fprintf(gp, "set xlabel 'Time'\n");
+    fprintf(gp, "set ylabel 'Price'\n");
+    fprintf(gp, "set grid\n");
+
+    int frame = 0;
 
     while (true)
     {
@@ -96,27 +103,48 @@ int main()
             nvidia.bid_prices.push_back(trader.bid);
         }
 
-        nvidia.history.push_back(nvidia.GetPrice());
+        float new_price = nvidia.GetPrice();
+
+        nvidia.history.push_back(new_price);
 
         if (nvidia.history.size() > 500)
         {
             nvidia.history.erase(nvidia.history.begin());
         }
 
-        clf();
+        if (frame % 10 == 0)
+        {
+            fprintf(gp,
+                "plot '-' with lines lw 2 title 'NVDA'\n");
 
-        plot(nvidia.history);
+            for (size_t i = 0; i < nvidia.history.size(); i++)
+            {
+                fprintf(
+                    gp,
+                    "%zu %f\n",
+                    i,
+                    nvidia.history[i]
+                );
+            }
 
-        title("Nvidia");
-        xlabel("Tick");
-        ylabel("Price");
+            fprintf(gp, "e\n");
+            fflush(gp);
 
-        draw();
+            std::cout
+                << "\rPrice: "
+                << new_price
+                << "      "
+                << std::flush;
+        }
+
+        frame++;
 
         std::this_thread::sleep_for(
             std::chrono::milliseconds(50)
         );
     }
+
+    pclose(gp);
 
     return 0;
 }
