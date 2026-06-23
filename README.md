@@ -110,5 +110,3 @@ This project taught me:
 MIT License
 
 ---
-
-*"I accidentally created Wall Street, the world's largest gambling venue."*
